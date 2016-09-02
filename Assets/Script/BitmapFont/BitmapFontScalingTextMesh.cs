@@ -2,7 +2,7 @@
 using System.Collections;
 using UnityEngine.UI;
 
-public class BitmapFontScaling : MonoBehaviour
+public class BitmapFontScalingTextMesh : MonoBehaviour
 {
 	[SerializeField] int textSize;
 	float bitmapFontOriginScale;
