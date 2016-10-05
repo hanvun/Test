@@ -1,4 +1,4 @@
-# Uniy2dAction
+﻿# Uniy2dAction
 
 #ゲーム概要
 UnityChanを操作して時間内に敵を多く倒します。  
@@ -10,7 +10,10 @@ Z射撃
 X起爆  
 Cジャンプ  
 
-#ゲーム画像＋制作画像
+#ゲーム画像
+![Title](https://raw.githubusercontent.com/hanvun/Unity2dAction/img/Unity2DActionTitle.png)
+
+![Title](https://raw.githubusercontent.com/hanvun/Unity2dAction/img/Unity2DActionGamePlay.png)
 
 #このゲームについて
 これはUnityを使った２Dアクションゲームです。制作目的として  
