@@ -43,6 +43,9 @@ public class PlayerController : MonoBehaviour {
 	//プレイヤーが無敵状態か
 	[SerializeField]
 	private bool PlayerInvincible = false;
+	[SerializeField]
+	//プレイヤーが死亡状態か
+	private bool PlayerDeath = false;
 
 	//プレイヤーから地面までの下の距離
 	private float groundUnderDistance = 0.1f;
@@ -67,6 +70,7 @@ public class PlayerController : MonoBehaviour {
 	//次弾が発射できるまでの間隔
 	private float bulletInterval = 0.15f;
 
+	//ライフの横幅
 	private const int LifeWidth = 40;
 
 	//爆発カウント
@@ -74,7 +78,10 @@ public class PlayerController : MonoBehaviour {
 
 	public bool BomberDamageFlag = false;
 
+	//SE
 	public AudioClip GunSe;
+	public AudioClip DamageSe;
+	//オーディオを再生するためのコンポーネントを取得
 	private AudioSource PlayerAudio;
 
 	private enum PlayerAnimatorParameters
@@ -83,7 +90,8 @@ public class PlayerController : MonoBehaviour {
 		PlayerJumpup,
 		PlayerFaling,
 		GunTimeIn,
-		PlayerWalk
+		PlayerWalk,
+		PlayerDeath
 	}
 
 
@@ -109,16 +117,18 @@ public class PlayerController : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update ( ) {
+		//カウントダウン中は動けないように
 		if (CountDawn.CountDawnflag) {
-			ground ();
-			move ();
-			jump ();
+			Move ();
 			Attack ();
 			PlayerLifeManager ();
 		}
+		//落下処理をしているジャンプ関数と地面処理をしているgroundのみ常に回す
+		Jump ();
+		Ground ();
 	}
 
-	void move(){
+	void Move(){
 		//左を入力して地面に触れていなければ左に移動
 		if (Input.GetKey (KeyCode.LeftArrow)) {
 			if (!GroundJudge (-Vector2.right, groundLeftDistance)) {
@@ -143,36 +153,27 @@ public class PlayerController : MonoBehaviour {
 		} else {
 			PlayerAnimator.SetBool (PlayerAnimatorParameters.PlayerWalk.ToString (), false);
 		}
-		//地面に触れていなくてジャンプフラグをONになってなければ落下
-		if ( !isGround && !isJump ) {
-			transform.Translate (-Vector2.up * PlayerFailingSpeed);
-			//落下アニメーション
-			PlayerAnimator.SetBool (PlayerAnimatorParameters.PlayerFaling.ToString (), true);
-		} else {
-			//落下アニメーションをオフ
-			PlayerAnimator.SetBool (PlayerAnimatorParameters.PlayerFaling.ToString (), false);
-		}
-
-		if( FallingJudge( -Vector2.up, FalingDistance ) ){
-			PlayerLifeDown = true;
-			transform.position = PlayerSpawnPoint.GetComponent<Transform> ().position;
-		}
 
 	}
 
-	void ground(){
+	void Ground(){
 		//地面に触れていてジャンプ中でなければ落下フラグをONに
 		if ( GroundJudge ( -Vector2.up, groundUnderDistance ) && !isJump ) {
 			isGround = true;
 		} else {
 			isGround = false;
 		}
-			
+
+		//落下時判定
+		if( FallingJudge( -Vector2.up, FalingDistance ) ){
+			PlayerLifeDown = true;
+			transform.position = PlayerSpawnPoint.GetComponent<Transform> ().position;
+		}
 	}
 
-	void jump( ){
-		//ジャンプキーが押されて地面に触れていればジャンプフラグONに
-		if ( Input.GetKey ( KeyCode.C ) && isGround ) {
+	void Jump( ){
+		//ジャンプキーが押されて地面に触れていて死亡状態でなければジャンプフラグONに
+		if ( Input.GetKey ( KeyCode.C ) && isGround && !PlayerDeath ) {
 			isJump = true;
 		}
 		//ジャンプフラグがONになっていなければジャンプ。
@@ -188,13 +189,23 @@ public class PlayerController : MonoBehaviour {
 				//上昇アニメーションをオフ
 				PlayerAnimator.SetBool (PlayerAnimatorParameters.PlayerJumpup.ToString (), false);
 			}
-
 		} else { 
 			//現在の速度を初速度
 			TempSpeed = JumpSpeed;
 		}
+
+		//地面に触れていなくてジャンプフラグをONになってなければ落下
+		if ( !isGround && !isJump ) {
+			transform.Translate (-Vector2.up * PlayerFailingSpeed);
+			//落下アニメーション
+			PlayerAnimator.SetBool (PlayerAnimatorParameters.PlayerFaling.ToString (), true);
+		} else {
+			//落下アニメーションをオフ
+			PlayerAnimator.SetBool (PlayerAnimatorParameters.PlayerFaling.ToString (), false);
+		}
 	}
 
+	//攻撃処理
 	void Attack(){
 		if (Input.GetKey (KeyCode.Z) ) {
 			//銃撃を始めたのが最初ならtrueに
@@ -204,11 +215,15 @@ public class PlayerController : MonoBehaviour {
 			} else {
 				PlayerAnimator.SetBool (PlayerAnimatorParameters.GunTimeIn.ToString (), false);
 			}
-
+			//攻撃時間を加算
 			bulletTime += Time.deltaTime;
+			//攻撃時間がインターバルより長くなってれば
 			if (bulletTime > bulletInterval) {
+				//攻撃時間をリセット
 				bulletTime = 0.0f;
+				//SE再生
 				PlayerAudio.PlayOneShot(GunSe);
+				//弾を生成
 				Instantiate (bulletPrefab, transform.position,Quaternion.identity);
 			}
 
@@ -220,7 +235,8 @@ public class PlayerController : MonoBehaviour {
 			PlayerAnimator.SetBool (PlayerAnimatorParameters.GunTime.ToString (), false);
 
 		}
-		if (Input.GetKey (KeyCode.X)) {
+		//Xキーを押すと爆発処理が起きるように
+		if (Input.GetKeyDown (KeyCode.X)) {
 			BomberDamageFlag = true;
 		} else {
 			BomberDamageFlag = false;
@@ -231,11 +247,20 @@ public class PlayerController : MonoBehaviour {
 	void PlayerLifeManager(){
 		if (PlayerLifeDown) {
 			if (PlayerLife > 0) {
+				//SE再生
+				PlayerAudio.PlayOneShot(DamageSe);
+				//プレイヤーを無敵状態に
 				PlayerInvincible = true;
+				//プレイヤーライフを下げる
 				PlayerLife--;
 				Destroy (player_life_clones [PlayerLife]);
 				PlayerLifeDown = false;
 			} else {
+				//死亡状態にして死亡アニメーションの再生
+				PlayerDeath = true;
+				PlayerAnimator.SetBool (PlayerAnimatorParameters.PlayerDeath.ToString (), true);
+				//点滅途中であれば表示されるように
+				gameObject.GetComponent<Renderer> ().enabled = true;
 				//カウントダウン状態に
 				CountDawn.CountDawnflag = false;
 				//終了処理
