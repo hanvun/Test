@@ -5,8 +5,6 @@ public class Enemy : MonoBehaviour {
 	//エネミーライフ
 	public int EnemyLife = 10;
 
-	private GameObject WhiteLingPrefab;
-	private GameObject BomberPrefab;
 	private GameObject TempWhiteLing;
 	private GameObject TempBomber;
 	private GameObject Explosive;
@@ -57,18 +55,14 @@ public class Enemy : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-        //爆弾の場所を上部にずらすように
-		BomberPosition = new Vector2 (transform.position.x + BomberoffsetWidth, transform.position.y + BomberoffsetHeight);
         //カメラの右端を取得
 		MaxRightCamera = Camera.main.ViewportToWorldPoint (Vector2.right);
         //カメラの左端を取得
 		MaxLeftCamera = Camera.main.ViewportToWorldPoint (Vector2.zero);
         //プレイヤーを取得
 		Player = GameObject.Find ("Player");
-        //各種プレハブ取得
+        //プレハブ取得
 		Explosive = (GameObject)Resources.Load ("Prefab/Explosive");
-		WhiteLingPrefab = (GameObject)Resources.Load("Prefab/WhiteRing");
-		BomberPrefab = (GameObject)Resources.Load("Prefab/bomber");
         //各種コンポーネント取得
 		EnemyBoxCollidar = gameObject.GetComponent<BoxCollider2D> ();
 		EnemyAnimator = gameObject.GetComponent<Animator> ();
@@ -93,15 +87,17 @@ public class Enemy : MonoBehaviour {
 		if (IsBulletDamage) {
             //爆弾スタックが最大でなければ
 			if (PlayerController.BomberStackMax > BomberStack) {
+				//爆弾の初期ポジションを自身の上に設定
+				BomberPosition = new Vector2 (transform.position.x + BomberoffsetWidth, transform.position.y + BomberoffsetHeight);
 				//爆発スタックを加算
 				BomberStack++;
 				//現在の大きさのリングと爆弾を削除
 				Destroy (TempWhiteLing);
 				Destroy (TempBomber);
 				//爆弾アイコンとリングの生成
-				TempWhiteLing = Instantiate (WhiteLingPrefab, transform.position, 
+				TempWhiteLing = Instantiate ((GameObject)Resources.Load("Prefab/WhiteRing"), transform.position, 
 					Quaternion.identity) as GameObject;
-				TempBomber = Instantiate (BomberPrefab, BomberPosition, 
+				TempBomber = Instantiate ((GameObject)Resources.Load("Prefab/bomber"), BomberPosition, 
 					Quaternion.identity) as GameObject;
                 //サイズを取得
 				var Whitesize = TempWhiteLing.gameObject.GetComponent<Transform> ().localScale;
