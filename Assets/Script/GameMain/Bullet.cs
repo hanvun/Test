@@ -6,9 +6,9 @@ public class Bullet : MonoBehaviour {
 	private GameObject target;
 
 	private bool targetTurn;
-
+    //弾の速度
 	private float BulletSpeed = 0.3f;
-
+    //弾のダメージかどうか
 	private const bool BulletDamage = true;
 
 	//玉からエネミーまでの距離判定
@@ -19,12 +19,14 @@ public class Bullet : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
+        //プレイヤーを取得
 		target = GameObject.Find("Player");
 
 		//ここでターゲットの打った瞬間の方向を取得
 		targetTurn = target.GetComponent<PlayerController>().turnFlag;
-		//offset設定
+        //反対を向いていれば
 		if (targetTurn) {
+            //offset設定
 			var pos = gameObject.transform.position;
 			pos.x -= BulletOffset.x;
 			pos.y += BulletOffset.y;
@@ -39,8 +41,9 @@ public class Bullet : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-		//弾の移動
+        //反対を向いているか
 		if (targetTurn) {
+            //弾の移動
 			transform.Translate (-Vector2.right * BulletSpeed);
 		} else {
 			transform.Translate (Vector2.right * BulletSpeed);

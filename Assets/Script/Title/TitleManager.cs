@@ -1,24 +1,22 @@
-﻿/*
-	Titleを管理する処理を行います。
-	Zキーを押したらゲームメインにように、今後キーコンフィグやチュートリアルに
-	飛べるようにするかも？
-*/
-
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.SceneManagement;
 
 public class TitleManager : MonoBehaviour {
-
+	private GameObject FadePrefab;
+	public GameObject TargetCanvas;
 	// Use this for initialization
 	void Start () {
-	
+		//プレハブ取得
+		FadePrefab = (GameObject)Resources.Load ("Prefab/TitleFadePanel");
 	}
 	
 	// Update is called once per frame
 	void Update () {
-		if (Input.GetKey (KeyCode.Z)) {
-			SceneManager.LoadScene ("GameMain");	
+        //Ｚを押したらフェードアウトパネルを出す
+		if (Input.GetKeyDown (KeyCode.Z)) {	
+			GameObject fadeoutObj = (GameObject)Instantiate (FadePrefab);
+			fadeoutObj.transform.SetParent (TargetCanvas.transform, false);
 		}
 	}
 }

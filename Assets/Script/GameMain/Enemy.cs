@@ -1,38 +1,17 @@
-﻿/*
- エネミーの行動に関する処理を書きます。
-	移動、ライフ管理の処理。ダメージ処理。
-	移動に関しては別途化してタイプで分ける形にするかも、ステージ式の場合に考慮中
-	爆発アイコンを最大数になった時に赤く点滅させるように
-*/
-
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 
 public class Enemy : MonoBehaviour {
 	//エネミーライフ
 	public int EnemyLife = 10;
 
-	//オブジェクトの宣言
-	private GameObject WhiteLingPrefab;
-	private GameObject BomberPrefab;
 	private GameObject TempWhiteLing;
 	private GameObject TempBomber;
 	private GameObject Explosive;
-	private ChainSystem chainSystem;
+	private GameObject Player;
 	private PlayerController playerController;
-	private BoxCollider2D EnemyBoxCollidar;
-	private Animator EnemyAnimator;
-
-	//カメラの端を取得
-	private Vector2 MaxRightCamera;
-	private Vector2 MaxLeftCamera;
-	//爆弾の位置
-	private Vector2 BomberPosition;
-
 	//爆弾がどれだけ大きいか
 	private int BomberStack = 0;
-	//爆発はどこまで大きくなれるか
-	private int BomberStackMax = 3;
 	//爆弾の位置修正値
 	private float BomberoffsetHeight = 2.5f;
 	private float BomberoffsetWidth  = 0.4f;
@@ -57,12 +36,15 @@ public class Enemy : MonoBehaviour {
 	private float JumpFailingSpeed = 0.032f;
 	//通常時の落下速度
 	private float EnemyFailingSpeed = 0.2f;
-	//最初の爆発かどうか
-	public bool FristBomberFlag = true;
-	//爆発までの時間
-	private float BomberTime = 0.2f;
-	//爆発までの時間を計測
-	private float BomberTimeCount = 0f;
+
+	//カメラの端を取得
+	private Vector2 MaxRightCamera;
+	private Vector2 MaxLeftCamera;
+	//爆弾の位置
+	private Vector2 BomberPosition;
+
+	private BoxCollider2D EnemyBoxCollidar;
+	private Animator EnemyAnimator;
 	//エネミーパラメーターリスト
 	private enum EnemyAnimatorParameters
 	{
@@ -73,170 +55,164 @@ public class Enemy : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-		//爆発のポジションを頭上にくるように調整
-		BomberPosition = new Vector2 (transform.position.x + BomberoffsetWidth, transform.position.y + BomberoffsetHeight);
-		//カメラの右端を取得
+        //カメラの右端を取得
 		MaxRightCamera = Camera.main.ViewportToWorldPoint (Vector2.right);
-		//カメラの左端を取得
+        //カメラの左端を取得
 		MaxLeftCamera = Camera.main.ViewportToWorldPoint (Vector2.zero);
-		//プレイヤーのオブジェクトを取得
-		GameObject PlayerObj = GameObject.Find ("Player");
-		//チェインシステムのオブジェクトを取得
-		GameObject ChainSystemObj = GameObject.Find ("ChainSystem");
-		//爆発アニメーションプレハブの取得
+        //プレイヤーを取得
+		Player = GameObject.Find ("Player");
+        //プレハブ取得
 		Explosive = (GameObject)Resources.Load ("Prefab/Explosive");
-		//ホワイトリングプレハブの取得
-		WhiteLingPrefab = (GameObject)Resources.Load("Prefab/WhiteRing");
-		//爆発イラストプレハブの取得
-		BomberPrefab = (GameObject)Resources.Load("Prefab/bomber");
-		//各種オブジェクトのコンポーネントを取得
+        //各種コンポーネント取得
 		EnemyBoxCollidar = gameObject.GetComponent<BoxCollider2D> ();
 		EnemyAnimator = gameObject.GetComponent<Animator> ();
-		playerController = PlayerObj.GetComponent<PlayerController> ();
-		chainSystem = ChainSystemObj.GetComponent<ChainSystem> ();
+		playerController = Player.GetComponent<PlayerController> ();
 	}
 	
 	// Update is called once per frame
 	void Update () {
-		//カウントダウン中は動かさない
+        //カウントダウンが終わっていれば動く
 		if (CountDawn.CountDawnflag) {
 			LifeManager ();
-			//EnemyMove ();
+			EnemyMove ();
 			EnemyBomberDamage ();
+			BomberColorChange ();
 		}
 
 	}
 
-	//ダメージが入ったかどうか
+    //ダメージ処理
 	public void Damage( bool IsBulletDamage ){
-		//銃のダメージか？
+        //銃撃ダメージか？
 		if (IsBulletDamage) {
-			//爆弾スタックが3以下であれば
-			if (BomberStackMax > BomberStack) {
+            //爆弾スタックが最大でなければ
+			if (PlayerController.BomberStackMax > BomberStack) {
+				//爆弾の初期ポジションを自身の上に設定
+				BomberPosition = new Vector2 (transform.position.x + BomberoffsetWidth, transform.position.y + BomberoffsetHeight);
 				//爆発スタックを加算
 				BomberStack++;
 				//現在の大きさのリングと爆弾を削除
 				Destroy (TempWhiteLing);
 				Destroy (TempBomber);
 				//爆弾アイコンとリングの生成
-				TempWhiteLing = Instantiate (WhiteLingPrefab, transform.position, 
+				TempWhiteLing = Instantiate ((GameObject)Resources.Load("Prefab/WhiteRing"), transform.position, 
 					Quaternion.identity) as GameObject;
-				TempBomber = Instantiate (BomberPrefab, BomberPosition, 
+				TempBomber = Instantiate ((GameObject)Resources.Load("Prefab/bomber"), BomberPosition, 
 					Quaternion.identity) as GameObject;
-				//爆発アイコンとリングのサイズを取得
+                //サイズを取得
 				var Whitesize = TempWhiteLing.gameObject.GetComponent<Transform> ().localScale;
 				var Bombersize = TempBomber.gameObject.GetComponent<Transform> ().localScale;
-				//スタックの数だけ大きくする
+                //爆弾の大きさに合わせてサイズを変更
 				Whitesize.x += (BomberStack * WhiteRingStackSize);
 				Whitesize.y += (BomberStack * WhiteRingStackSize);
 				Bombersize.x += (BomberStack * BomberStackSize);
 				Bombersize.y += (BomberStack * BomberStackSize);
-				//反映させる
+                //サイズを適用
 				TempWhiteLing.gameObject.GetComponent<Transform> ().localScale = Whitesize;
 				TempBomber.gameObject.GetComponent<Transform> ().localScale = Bombersize;
 				//ダメージフラグをON
 				DamageFlag = true;
 			}
-			//HPにダメージを与える
-			EnemyLife--;
+		}
+		//HPにダメージを与える
+		EnemyLife--;
+	}
+
+    //エネミーの爆発ダメージ
+	void EnemyBomberDamage(){
+        //プレイヤーが爆発フラグをtrueにしているか
+		if (playerController.BomberDamageFlag) {
+            //爆発スタックは3か？
+			if (BomberStack == 3) {
+                //エネミーのライフを0に
+				EnemyLife = 0;
+                //プレイヤーの爆発フラグをfalseに
+				playerController.BomberDamageFlag = false;
+			}
 		}
 	}
 
-	//エネミーの爆発ダメージ
-	void EnemyBomberDamage(){
-		//プレイヤーが爆発ボタンを押したか
-		if (playerController.BomberDamageFlag) {
-			//爆発スタックは3つか
-			if (BomberStack >= 3) {
-				//エネミーのライフを0にする
-				EnemyLife = 0;
-				//チェイン数を加算
-				chainSystem.ChainAdd();
-			}
+	//エネミーが爆発出来るのであれば爆弾が赤くなるように
+	void BomberColorChange(){
+		if (BomberStack == 3) {
+			//赤色にマテリアルを変える
+			TempBomber.GetComponent<Renderer> ().material.color = Color.red;
 		}
 	}
 
 	void LifeManager(){
 		//エネミーライフが0以下になったら消える
 		if (EnemyLife <= 0) {
-			//最初の爆発のフラグがONであればそのまま違うのであれば爆発までの時間を待ってフラグをON
-			if (FristBomberFlag) {
-                //ゲームスコアを加算
-                Score.GameScore++;
-				//チェインテキストを生成
-				chainSystem.ChainTextPopup(transform.position);
-				//爆発アニメーションを生成
-				Instantiate (Explosive, transform.position, Quaternion.identity);
-                //現在出している爆発アイコンと白いリングと自身を削除する
-                Destroy (TempWhiteLing);
-				Destroy (TempBomber);
-				Destroy (gameObject);
-			} else if (BomberTimeCount >= BomberTime) {
-				FristBomberFlag = true;
-			}
-			//爆発までの時間をカウント
-			BomberTimeCount += Time.deltaTime;
+            //撃破数を加算
+			Score.GameScore++;
+            //爆発アニメーション生成
+			Instantiate (Explosive, transform.position, Quaternion.identity);
+            //各種生成オブジェクトを削除
+			Destroy (TempWhiteLing);
+			Destroy (TempBomber);
+			Destroy (gameObject);
 		}
 	}
 
 	void EnemyMove(){
 		//エネミーが左右を移動して地面がなかった場合ジャンプして飛び越えるように
 		transform.Translate ( Vector2.right * MoveSpeed );
-		//パラメーターの変更
+        //移動アニメーションを再生
 		EnemyAnimator.SetBool (EnemyAnimatorParameters.EnemyWalk.ToString(), true);
-		//ジャンプエリアにレイがぶつかったら
+        //目の前にジャンプエリアがあれば
 		if (JumpAreaJudge (Vector2.right, Enemydistance)) {
-			//ジャンプフラグをONに
+            //ジャンプフラグをtrueに
 			isJump = true;
 		}
 
-		//ジャンプフラグがONになっていればジャンプするように
+		//ジャンプフラグがtrueになっていればジャンプするように
 		if (isJump) {
-			//パラメーターの変更
+            //ジャンプ上昇アニメーションを再生
 			EnemyAnimator.SetBool (EnemyAnimatorParameters.EnemyJumpUp.ToString(), true);
-			//上方向に移動
+            //上へ速度分移動
 			transform.Translate (Vector2.up * TempSpeed);
-			//現在の上昇速度を設定値分減らしていく
+            //速度を設定分下げていく
 			TempSpeed -= JumpFailingSpeed;
-			//現在の上昇速度が0以下になったらジャンプフラグをOff
+			//現在の速度が0以下になったらジャンプフラグをOff
 			if (TempSpeed < 0) {
-				//パラメーターの変更
+                //ジャンプ上昇アニメーションを停止
 				EnemyAnimator.SetBool (EnemyAnimatorParameters.EnemyJumpUp.ToString(), false);
-				//ジャンプフラグをOFFに
+                //ジャンプフラグをfalse
 				isJump = false;
 			}
 		} else {
-			//ジャンプフラグがOFFであればジャンプの初速を元に戻すように
+			//ジャンプフラグがfalseであればジャンプの初速を元に戻すように
 			TempSpeed = JumpSpeed;
 		}
 
 		//画面外に出ようとしたら反転
 		if (MaxRightCamera.x < transform.position.x) {
+            //180度回転
 			transform.Rotate (0, 180, 0);
 		}
-		//画面外に出ようとしたら反転
 		if (MaxLeftCamera.x > transform.position.x) {
+            //180度回転
 			transform.Rotate (0, 180, 0);
 		}
 
 		//空中にいたら落下させるように
 		if (!GroundJudge (-Vector2.up, GroundDistance) && !isJump) {
-			//パラメーターの変更
+            //落下アニメーション再生
 			EnemyAnimator.SetBool (EnemyAnimatorParameters.EnemyFaling.ToString (), true);
-			//設定された落下速度分移動
+            //落下速度分移動
 			transform.Translate (-Vector2.up * EnemyFailingSpeed);
 		} else {
-			//パラメーターの変更
+            //下降アニメーションを停止
 			EnemyAnimator.SetBool (EnemyAnimatorParameters.EnemyFaling.ToString(), false);
 		}
 
 		//ダメージフラグがONになっていれば爆弾とリングが追従するように
 		if (DamageFlag) {
-			//爆発アイコンの位置を調整
+            //爆弾のポジションを自身の上に設定
 			BomberPosition = new Vector2 (transform.position.x + BomberoffsetWidth, transform.position.y + BomberoffsetHeight);
-			//反映
+            //適用
 			TempBomber.gameObject.GetComponent<Transform>().position = BomberPosition;
-			//白いリングは真ん中にくるように
+            //リングも移動
 			TempWhiteLing.gameObject.GetComponent<Transform> ().position = new Vector2 (transform.position.x, transform.position.y);
 		}
 
