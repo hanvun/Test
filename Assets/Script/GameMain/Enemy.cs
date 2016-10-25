@@ -1,4 +1,10 @@
-﻿using UnityEngine;
+﻿﻿/*
+ エネミーの行動に関する処理を書きます。
+    移動、ライフ管理の処理。ダメージ処理。
+    爆発アイコンを最大数になった時に赤く点滅させるように
+*/
+
+using UnityEngine;
 using System.Collections;
 
 public class Enemy : MonoBehaviour {
@@ -43,6 +49,14 @@ public class Enemy : MonoBehaviour {
 	//爆弾の位置
 	private Vector2 BomberPosition;
 
+    //最初の爆発かどうか
+    public bool FristBomberFlag = true;
+    //爆発までの時間
+    private float BomberTime = 0.2f;
+    //爆発までの時間を計測
+    private float BomberTimeCount = 0f;
+
+    private ChainSystem chainSystem;
 	private BoxCollider2D EnemyBoxCollidar;
 	private Animator EnemyAnimator;
 	//エネミーパラメーターリスト
@@ -61,12 +75,15 @@ public class Enemy : MonoBehaviour {
 		MaxLeftCamera = Camera.main.ViewportToWorldPoint (Vector2.zero);
         //プレイヤーを取得
 		Player = GameObject.Find ("Player");
+        //チェインシステムのオブジェクトを取得
+        GameObject ChainSystemObj = GameObject.Find("ChainSystem");
         //プレハブ取得
 		Explosive = (GameObject)Resources.Load ("Prefab/Explosive");
         //各種コンポーネント取得
 		EnemyBoxCollidar = gameObject.GetComponent<BoxCollider2D> ();
 		EnemyAnimator = gameObject.GetComponent<Animator> ();
 		playerController = Player.GetComponent<PlayerController> ();
+        chainSystem = ChainSystemObj.GetComponent<ChainSystem>();
 	}
 	
 	// Update is called once per frame
@@ -74,7 +91,7 @@ public class Enemy : MonoBehaviour {
         //カウントダウンが終わっていれば動く
 		if (CountDawn.CountDawnflag) {
 			LifeManager ();
-			EnemyMove ();
+			//EnemyMove ();
 			EnemyBomberDamage ();
 			BomberColorChange ();
 		}
@@ -126,6 +143,8 @@ public class Enemy : MonoBehaviour {
 			if (BomberStack == 3) {
                 //エネミーのライフを0に
 				EnemyLife = 0;
+                //チェイン数を加算
+                chainSystem.ChainAdd();
                 //プレイヤーの爆発フラグをfalseに
 				playerController.BomberDamageFlag = false;
 			}
@@ -140,19 +159,27 @@ public class Enemy : MonoBehaviour {
 		}
 	}
 
-	void LifeManager(){
-		//エネミーライフが0以下になったら消える
-		if (EnemyLife <= 0) {
-            //撃破数を加算
-			Score.GameScore++;
-            //爆発アニメーション生成
-			Instantiate (Explosive, transform.position, Quaternion.identity);
-            //各種生成オブジェクトを削除
-			Destroy (TempWhiteLing);
-			Destroy (TempBomber);
-			Destroy (gameObject);
-		}
-	}
+    void LifeManager() {
+        //エネミーライフが0以下になったら消える
+        if (EnemyLife <= 0) {
+            if (FristBomberFlag) {
+                //撃破数を加算
+                Score.GameScore++;
+                //チェインテキストを生成
+                chainSystem.ChainTextPopup(transform.position);
+                //爆発アニメーション生成
+                Instantiate(Explosive, transform.position, Quaternion.identity);
+                //各種生成オブジェクトを削除
+                Destroy(TempWhiteLing);
+                Destroy(TempBomber);
+                Destroy(gameObject);
+            } else if (BomberTimeCount >= BomberTime) {
+                FristBomberFlag = true;
+            }
+            //爆発までの時間をカウント
+            BomberTimeCount += Time.deltaTime;
+        }
+    }
 
 	void EnemyMove(){
 		//エネミーが左右を移動して地面がなかった場合ジャンプして飛び越えるように
