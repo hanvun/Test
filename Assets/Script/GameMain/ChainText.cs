@@ -29,8 +29,7 @@ public class ChainText : MonoBehaviour {
 		//チェインシステムを取得
 		GameObject ChainSystemObj = GameObject.Find ("ChainSystem");
 		//目標のオブジェクトのポジションを取得
-		//TargetObjectPos = ChainSystemObj.GetComponent<ChainSystem> ().getTargetTextPos();
-		Debug.Log (TargetObjectPos);
+		TargetObjectPos = ChainSystemObj.GetComponent<ChainSystem> ().getTargetTextPos();
 		//自身のRectTransFormを取得
 		myRectTrans = gameObject.GetComponent<RectTransform>();
 		//キャンバスを取得
